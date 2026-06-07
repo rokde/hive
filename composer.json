@@ -30,7 +30,8 @@
     "autoload-dev": {
         "psr-4": {
             "Tests\\": "tests/"
-        }
+        },
+        "classmap": ["tests/Fixtures/"]
     },
     "authors": [
         {
@@ -49,7 +50,8 @@
     },
     "require": {
         "php": "^8.5",
-        "psr/container": "^2.0"
+        "psr/container": "^2.0",
+        "psr/log": "^3.0"
     },
     "require-dev": {
         "laravel/pint": "^1.29",
