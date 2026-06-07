@@ -52,7 +52,7 @@ class Container implements ContainerInterface
     private bool $booted = false;
 
     public function __construct(
-        private ConfigResolverInterface $config = new ArrayConfigResolver(),
+        private readonly ConfigResolverInterface $config = new ArrayConfigResolver,
     ) {
         // Den Container selbst auflösbar machen.
         $this->shared[ContainerInterface::class] = $this;
@@ -70,6 +70,7 @@ class Container implements ContainerInterface
     {
         $this->definitions[$id] = $definition;
         unset($this->shared[$id]); // discard any outdated singleton instances
+
         return $this;
     }
 
@@ -77,7 +78,7 @@ class Container implements ContainerInterface
      * Singleton binding. $concrete can be a class, a factory, or null
      * (meaning $id is the class itself).
      *
-     * @param class-string|Closure|null $concrete
+     * @param  class-string|Closure|null  $concrete
      */
     public function singleton(string $id, string|Closure|null $concrete = null): self
     {
@@ -85,9 +86,9 @@ class Container implements ContainerInterface
     }
 
     /**
-     * Transientes Binding (neue Instanz bei jedem get()).
+     * Transient Bindings (new instance on each get()).
      *
-     * @param class-string|Closure|null $concrete
+     * @param  class-string|Closure|null  $concrete
      */
     public function bind(string $id, string|Closure|null $concrete = null): self
     {
@@ -109,6 +110,7 @@ class Container implements ContainerInterface
     {
         $this->definitions[$id] = ServiceDefinition::forValue($value);
         $this->shared[$id] = $value;
+
         return $this;
     }
 
@@ -121,7 +123,7 @@ class Container implements ContainerInterface
     }
 
     /**
-     * @param class-string|Closure|null $concrete
+     * @param  class-string|Closure|null  $concrete
      */
     private function toDefinition(string $id, string|Closure|null $concrete, Lifetime $lifetime): ServiceDefinition
     {
@@ -142,6 +144,7 @@ class Container implements ContainerInterface
     public function addProvider(ServiceProviderInterface $provider): self
     {
         $this->providers[] = $provider;
+
         return $this;
     }
 
@@ -169,7 +172,7 @@ class Container implements ContainerInterface
         $this->booted = true;
 
         foreach ($this->definitions as $id => $definition) {
-            if ($definition->eager && !isset($this->shared[$id])) {
+            if ($definition->eager && ! isset($this->shared[$id])) {
                 $this->get($id);
             }
         }
@@ -248,23 +251,24 @@ class Container implements ContainerInterface
     private function build(ServiceDefinition $definition): mixed
     {
         return match ($definition->kind) {
-            Kind::Value    => $definition->value,
-            Kind::Factory  => ($definition->factory)($this),
-            Kind::Alias    => $this->get((string) $definition->alias),
+            Kind::Value => $definition->value,
+            Kind::Factory => ($definition->factory)($this),
+            Kind::Alias => $this->get((string) $definition->alias),
             Kind::ClassName => $this->autowire((string) $definition->class),
         };
     }
 
     /**
      * @param class-string $class
+     * @throws ReflectionException
      */
     private function autowire(string $class): object
     {
         $reflection = $this->reflect($class);
 
-        if (!$reflection->isInstantiable()) {
+        if (! $reflection->isInstantiable()) {
             throw new ContainerException(sprintf(
-                'Cannot instantiate "%s" (interface, abstract class or non-public constructor). ' .
+                'Cannot instantiate "%s" (interface, abstract class or non-public constructor). '.
                 'Register a binding or alias for it.',
                 $class,
             ));
@@ -284,8 +288,8 @@ class Container implements ContainerInterface
     /**
      * Expands the parameter list of a function or method.
      *
-     * @param list<ReflectionParameter> $parameters
-     * @param array<string, mixed>      $overrides  Values specified by name.
+     * @param  list<ReflectionParameter>  $parameters
+     * @param  array<string, mixed>  $overrides  Values specified by name.
      * @return list<mixed>
      */
     private function resolveParameters(array $parameters, array $overrides = []): array
@@ -297,6 +301,7 @@ class Container implements ContainerInterface
 
             if (array_key_exists($name, $overrides)) {
                 $resolved[] = $overrides[$name];
+
                 continue;
             }
 
@@ -327,7 +332,7 @@ class Container implements ContainerInterface
 
         // 3. Class/Interface Type Hint – Resolve Recursively
         $type = $parameter->getType();
-        if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
+        if ($type instanceof ReflectionNamedType && ! $type->isBuiltin()) {
             $typeName = $type->getName();
 
             if ($this->has($typeName)) {
@@ -369,7 +374,7 @@ class Container implements ContainerInterface
     }
 
     /**
-     * @param ReflectionAttribute<Config> $attribute
+     * @param  ReflectionAttribute<Config>  $attribute
      */
     private function resolveConfig(ReflectionParameter $parameter, ReflectionAttribute $attribute): mixed
     {
@@ -414,7 +419,8 @@ class Container implements ContainerInterface
      * [Class::class, "staticMethod"], invokable objects and class names
      * with __invoke.
      *
-     * @param array<string, mixed> $parameters
+     * @param  array<string, mixed>  $parameters
+     *
      * @throws ReflectionException
      */
     public function call(callable|array|string $callback, array $parameters = []): mixed
@@ -427,6 +433,7 @@ class Container implements ContainerInterface
 
     /**
      * @return array{0: ReflectionFunctionAbstract, 1: Closure(list<mixed>): mixed}
+     *
      * @throws ReflectionException
      */
     private function reflectCallable(callable|array|string $callback): array
@@ -435,9 +442,10 @@ class Container implements ContainerInterface
         if (is_array($callback)) {
             [$target, $method] = $callback;
             $object = is_string($target) ? null : $target;
-            if (is_string($target) && !(new ReflectionMethod($target, $method))->isStatic()) {
+            if (is_string($target) && ! new ReflectionMethod($target, $method)->isStatic()) {
                 $object = $this->get($target);
             }
+
             $reflection = new ReflectionMethod($object ?? $target, $method);
             $invoker = static fn (array $a): mixed => $reflection->invokeArgs($object, $a);
 
@@ -454,7 +462,7 @@ class Container implements ContainerInterface
             if (str_contains($callback, '::')) {
                 $reflection = ReflectionMethod::createFromMethodName($callback);
                 $object = null;
-                if (!$reflection->isStatic()) {
+                if (! $reflection->isStatic()) {
                     [$class] = explode('::', $callback, 2);
                     $object = $this->get($class);
                 }
@@ -490,14 +498,12 @@ class Container implements ContainerInterface
     // ---------------------------------------------------------------------
     // Helper
     // ---------------------------------------------------------------------
-
     /**
-     * @param string|class-string $id
-     * @return bool
+     * @param  string|class-string  $id
      */
     private function isInstantiable(string $id): bool
     {
-        if (!class_exists($id)) {
+        if (! class_exists($id)) {
             return false;
         }
 
@@ -509,8 +515,9 @@ class Container implements ContainerInterface
     }
 
     /**
-     * @param class-string $class
+     * @param  class-string  $class
      * @return ReflectionClass<object>
+     *
      * @throws ReflectionException
      */
     private function reflect(string $class): ReflectionClass
@@ -521,10 +528,10 @@ class Container implements ContainerInterface
     private function describeFunction(ReflectionFunctionAbstract $function): string
     {
         if ($function instanceof ReflectionMethod) {
-            return $function->getDeclaringClass()->getName() . '::' . $function->getName() . '()';
+            return $function->getDeclaringClass()->getName().'::'.$function->getName().'()';
         }
 
-        return $function->getName() . '()';
+        return $function->getName().'()';
     }
 
     public function config(): ConfigResolverInterface
