@@ -1,0 +1,39 @@
+{
+    "name": "rokde/hive",
+    "description": "A tiny framework in php",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Hive\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Hive\\Tests\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Robert Kummer",
+            "email": "post@robert-kummer.de"
+        }
+    ],
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "require": {
+        "php": "^8.5",
+        "psr/container": "^2.0"
+    },
+    "require-dev": {
+        "pestphp/pest": "^4.7",
+        "phpstan/phpstan": "^2.2"
+    }
+}
