@@ -8,7 +8,10 @@ use Hive\DependencyInjection\Container;
 use Hive\DependencyInjection\Exceptions\ContainerException;
 use Hive\DependencyInjection\Provider\BootableServiceProviderInterface;
 use Hive\DependencyInjection\Provider\ServiceProviderInterface;
+use Hive\Exception\ExceptionHandler;
+use Hive\Exception\HandlerInterface;
 use Psr\Container\ContainerInterface;
+use Psr\Log\LoggerInterface;
 use Tests\Fixtures\Application\NotAProvider;
 use Tests\Fixtures\Application\RegisteringProvider;
 use Tests\Fixtures\Application\SimpleService;
@@ -308,4 +311,137 @@ test('startedAt is stable across idempotent create calls', function (): void {
     $app->create();
 
     expect($app->startedAt())->toBe($first);
+});
+
+// =====================================================================
+// Logger Registration
+// =====================================================================
+
+test('withLogger accepts a logger instance', function (): void {
+    $logger = new class implements LoggerInterface
+    {
+        public function emergency(string|Stringable $message, array $context = []): void {}
+
+        public function alert(string|Stringable $message, array $context = []): void {}
+
+        public function critical(string|Stringable $message, array $context = []): void {}
+
+        public function error(string|Stringable $message, array $context = []): void {}
+
+        public function warning(string|Stringable $message, array $context = []): void {}
+
+        public function notice(string|Stringable $message, array $context = []): void {}
+
+        public function info(string|Stringable $message, array $context = []): void {}
+
+        public function debug(string|Stringable $message, array $context = []): void {}
+
+        public function log($level, string|Stringable $message, array $context = []): void {}
+    };
+
+    $app = Application::configure()
+        ->withLogger($logger)
+        ->create();
+
+    expect($app->container()->get(LoggerInterface::class))->toBe($logger);
+});
+
+test('LoggerInterface is registered in the container', function (): void {
+    $app = Application::configure()->create();
+
+    expect($app->container()->has(LoggerInterface::class))->toBeTrue();
+});
+
+test('withLogger is locked after create', function (): void {
+    $app = Application::configure()->create();
+    $logger = new class implements LoggerInterface
+    {
+        public function emergency(string|Stringable $message, array $context = []): void {}
+
+        public function alert(string|Stringable $message, array $context = []): void {}
+
+        public function critical(string|Stringable $message, array $context = []): void {}
+
+        public function error(string|Stringable $message, array $context = []): void {}
+
+        public function warning(string|Stringable $message, array $context = []): void {}
+
+        public function notice(string|Stringable $message, array $context = []): void {}
+
+        public function info(string|Stringable $message, array $context = []): void {}
+
+        public function debug(string|Stringable $message, array $context = []): void {}
+
+        public function log($level, string|Stringable $message, array $context = []): void {}
+    };
+
+    expect(fn (): Application => $app->withLogger($logger))
+        ->toThrow(LogicException::class, 'Application is already created');
+});
+
+// =====================================================================
+// Exception Handler Registration
+// =====================================================================
+
+test('withExceptions registers handlers via callback', function (): void {
+    $handler = new class implements HandlerInterface
+    {
+        public bool $handleCalled = false;
+
+        public function handle(Throwable $exception): void
+        {
+            $this->handleCalled = true;
+        }
+    };
+
+    $app = Application::configure()
+        ->withExceptions(function ($handler_registry) use ($handler): void {
+            $handler_registry->register(RuntimeException::class, $handler);
+        })
+        ->create();
+
+    expect($app->container()->has(ExceptionHandler::class))->toBeTrue();
+});
+
+test('ExceptionHandler is registered in the container', function (): void {
+    $app = Application::configure()->create();
+
+    expect($app->container()->has(ExceptionHandler::class))->toBeTrue()
+        ->and($app->container()->get(ExceptionHandler::class))
+        ->toBeInstanceOf(ExceptionHandler::class);
+});
+
+test('withExceptions is locked after create', function (): void {
+    $app = Application::configure()->create();
+
+    expect(fn (): Application => $app->withExceptions(function ($handler): void {}))
+        ->toThrow(LogicException::class, 'Application is already created');
+});
+
+test('registered exception handlers are called on handle', function (): void {
+    $handler = new class implements HandlerInterface
+    {
+        public bool $handleCalled = false;
+
+        public ?Throwable $receivedException = null;
+
+        public function handle(Throwable $exception): void
+        {
+            $this->handleCalled = true;
+            $this->receivedException = $exception;
+        }
+    };
+
+    $app = Application::configure()
+        ->withExceptions(function ($handler_registry) use ($handler): void {
+            $handler_registry->register(RuntimeException::class, $handler);
+        })
+        ->create();
+
+    $exceptionHandler = $app->container()->get(ExceptionHandler::class);
+    $testException = new RuntimeException('test error');
+    $exceptionHandler->handle($testException);
+
+    expect($handler->handleCalled)->toBeTrue()
+        ->and($handler->receivedException)->toBe($testException);
 });
