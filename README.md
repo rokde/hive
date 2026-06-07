@@ -1,7 +1,7 @@
-# Kleine Framework
+# Small Framework
 
-Diese Projekt soll ein kleines Framework sein. Ich möchte ein recht schnelles und einfaches Framework schreiben. Es soll nicht viel Code enthalten.
-Gerade so die Basis soll es bereitstellen und Anknüpfungspunkte bieten, mit denen ich ein Paket/Modul schreiben kann, welches die Funktionalität erweitern kann.
+This project is supposed to be a small framework. I want to write a quite fast and simple framework. It should not contain much code.
+It should provide just the basics and offer connection points with which I can write a package/module that can extend the functionality.
 
 ## Spec
 
