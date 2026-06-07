@@ -185,7 +185,7 @@ class Container implements ContainerInterface
     /**
      * @template T of object
      *
-     * @param  class-string<T>  $id
+     * @param  class-string<T>|string  $id
      */
     public function get(string $id): mixed
     {
@@ -217,7 +217,7 @@ class Container implements ContainerInterface
     }
 
     /**
-     * @param  class-string  $id
+     * @param  string|class-string  $id
      */
     public function has(string $id): bool
     {
@@ -259,7 +259,8 @@ class Container implements ContainerInterface
     }
 
     /**
-     * @param class-string $class
+     * @param  class-string  $class
+     *
      * @throws ReflectionException
      */
     private function autowire(string $class): object
