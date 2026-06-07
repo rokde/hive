@@ -10,6 +10,4 @@ use RuntimeException;
 /**
  * General container error (e.g., an unsolvable dependency).
  */
-class ContainerException extends RuntimeException implements ContainerExceptionInterface
-{
-}
+class ContainerException extends RuntimeException implements ContainerExceptionInterface {}

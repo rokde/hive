@@ -25,6 +25,5 @@ final class Config
     public function __construct(
         public string $key,
         public mixed $default = null,
-    ) {
-    }
+    ) {}
 }

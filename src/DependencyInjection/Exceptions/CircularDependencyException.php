@@ -10,7 +10,7 @@ namespace Hive\DependencyInjection\Exceptions;
 class CircularDependencyException extends ContainerException
 {
     /**
-     * @param list<string> $path The complete resolution path, including the ID that appears again.
+     * @param  list<string>  $path  The complete resolution path, including the ID that appears again.
      */
     public static function fromPath(array $path): self
     {
