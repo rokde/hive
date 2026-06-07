@@ -10,6 +10,8 @@ use Hive\DependencyInjection\Container;
 use Hive\DependencyInjection\Exceptions\ContainerException;
 use Hive\DependencyInjection\Provider\ServiceProviderInterface;
 use Hive\Events\Dispatcher;
+use Hive\Events\Executor;
+use Hive\Events\SyncQueue;
 use Hive\Exception\ExceptionHandler;
 use LogicException;
 use Psr\Log\LoggerInterface;
@@ -164,8 +166,20 @@ class Application
         $exceptionHandler->registerAsGlobal();
 
         $container->singleton(Executor::class);
-        $container->singleton(SyncQueue::class);
-        $container->singleton(Dispatcher::class, fn ($c): Dispatcher => new Dispatcher($c->get(SyncQueue::class)));
+        $container->singleton(SyncQueue::class, function ($c): SyncQueue {
+            /** @var Container $c */
+            /** @var Executor $executor */
+            $executor = $c->get(Executor::class);
+
+            return new SyncQueue($executor);
+        });
+        $container->singleton(Dispatcher::class, function ($c): Dispatcher {
+            /** @var Container $c */
+            /** @var Executor $executor */
+            $executor = $c->get(Executor::class);
+
+            return new Dispatcher($executor);
+        });
 
         if ($this->eventCallback !== null) {
             $eventDispatcher = $container->get(Dispatcher::class);

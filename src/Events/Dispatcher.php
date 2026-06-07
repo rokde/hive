@@ -41,8 +41,9 @@ final class Dispatcher
     private array $queues = [];
 
     public function __construct(
+        Executor $executor = new Executor,
     ) {
-        $this->queues['sync'] = new SyncQueue;
+        $this->queues['sync'] = new SyncQueue($executor);
     }
 
     /**
@@ -101,7 +102,7 @@ final class Dispatcher
 
     private function resolveQueue(mixed $event, string $requestedQueue): QueueInterface
     {
-        if ($event instanceof ShouldQueueInterface && $this->queues[$requestedQueue] !== null) {
+        if ($event instanceof ShouldQueueInterface && isset($this->queues[$requestedQueue])) {
             return $this->queues[$requestedQueue];
         }
 
@@ -160,11 +161,16 @@ final class Dispatcher
         // Callable: Wraps in an anonymous listener class
         return new readonly class($listener) implements ListenerInterface
         {
+            /**
+             * @param  callable  $callable
+             */
             public function __construct(private mixed $callable) {}
 
             public function handle(mixed $event): void
             {
-                ($this->callable)($event);
+                /** @var callable $callable */
+                $callable = $this->callable;
+                $callable($event);
             }
         };
     }
