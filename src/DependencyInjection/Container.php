@@ -186,6 +186,7 @@ class Container implements ContainerInterface
      * @template T of object
      *
      * @param  class-string<T>|string  $id
+     * @return ($id is class-string<T> ? T : mixed)
      */
     public function get(string $id): mixed
     {
@@ -252,9 +253,9 @@ class Container implements ContainerInterface
     {
         return match ($definition->kind) {
             Kind::Value => $definition->value,
-            Kind::Factory => ($definition->factory)($this),
-            Kind::Alias => $this->get((string) $definition->alias),
-            Kind::ClassName => $this->autowire((string) $definition->class),
+            Kind::Factory => ($definition->factory ?? throw new ContainerException('Factory definition is missing its factory closure.'))($this),
+            Kind::Alias => $this->get($definition->alias ?? throw new ContainerException('Alias definition is missing its target id.')),
+            Kind::ClassName => $this->autowire($definition->class ?? throw new ContainerException('Class definition is missing its class name.')),
         };
     }
 
@@ -420,6 +421,7 @@ class Container implements ContainerInterface
      * [Class::class, "staticMethod"], invokable objects and class names
      * with __invoke.
      *
+     * @param  callable|array{0: object|class-string, 1: string}|string  $callback
      * @param  array<string, mixed>  $parameters
      *
      * @throws ReflectionException
@@ -433,6 +435,7 @@ class Container implements ContainerInterface
     }
 
     /**
+     * @param  callable|array{0: object|class-string, 1: string}|string  $callback
      * @return array{0: ReflectionFunctionAbstract, 1: Closure(list<mixed>): mixed}
      *
      * @throws ReflectionException
@@ -442,10 +445,19 @@ class Container implements ContainerInterface
         // [objectOrClass, method]
         if (is_array($callback)) {
             [$target, $method] = $callback;
-            $object = is_string($target) ? null : $target;
-            if (is_string($target) && ! new ReflectionMethod($target, $method)->isStatic()) {
-                $object = $this->get($target);
+
+            // [object, method]: bind directly to the given instance.
+            if (is_object($target)) {
+                $reflection = new ReflectionMethod($target, $method);
+                $invoker = static fn (array $a): mixed => $reflection->invokeArgs($target, $a);
+
+                return [$reflection, $invoker];
             }
+
+            // [class-string, method]: resolve the instance unless static.
+            $object = new ReflectionMethod($target, $method)->isStatic()
+                ? null
+                : $this->resolveObject($target);
 
             $reflection = new ReflectionMethod($object ?? $target, $method);
             $invoker = static fn (array $a): mixed => $reflection->invokeArgs($object, $a);
@@ -465,7 +477,7 @@ class Container implements ContainerInterface
                 $object = null;
                 if (! $reflection->isStatic()) {
                     [$class] = explode('::', $callback, 2);
-                    $object = $this->get($class);
+                    $object = $this->resolveObject($class);
                 }
 
                 return [$reflection, static fn (array $a): mixed => $reflection->invokeArgs($object, $a)];
@@ -479,10 +491,10 @@ class Container implements ContainerInterface
 
             // Invokable class-string
             if (class_exists($callback)) {
-                $object = $this->get($callback);
+                $object = $this->resolveObject($callback);
                 $reflection = new ReflectionMethod($object, '__invoke');
 
-                return [$reflection, static fn (array $a): mixed => $object(...$a)];
+                return [$reflection, static fn (array $a): mixed => $reflection->invokeArgs($object, $a)];
             }
         }
 
@@ -499,6 +511,27 @@ class Container implements ContainerInterface
     // ---------------------------------------------------------------------
     // Helper
     // ---------------------------------------------------------------------
+    /**
+     * Resolves an id that is expected to yield an object (e.g. for method or
+     * invokable injection).
+     *
+     * @param  class-string|string  $id
+     */
+    private function resolveObject(string $id): object
+    {
+        $instance = $this->get($id);
+
+        if (! is_object($instance)) {
+            throw new ContainerException(sprintf(
+                'Expected service "%s" to resolve to an object, got %s.',
+                $id,
+                get_debug_type($instance),
+            ));
+        }
+
+        return $instance;
+    }
+
     /**
      * @param  string|class-string  $id
      */
@@ -518,8 +551,6 @@ class Container implements ContainerInterface
     /**
      * @param  class-string  $class
      * @return ReflectionClass<object>
-     *
-     * @throws ReflectionException
      */
     private function reflect(string $class): ReflectionClass
     {
