@@ -9,7 +9,10 @@ use Hive\Config\Resolver\ConfigResolverInterface;
 use Hive\DependencyInjection\Container;
 use Hive\DependencyInjection\Exceptions\ContainerException;
 use Hive\DependencyInjection\Provider\ServiceProviderInterface;
+use Hive\Exception\ExceptionHandler;
 use LogicException;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 class Application
 {
@@ -25,6 +28,11 @@ class Application
     private ?Container $container = null;
 
     private ?float $startedAt = null;
+
+    private ?LoggerInterface $logger = null;
+
+    /** @var callable|null */
+    private mixed $exceptionCallback = null;
 
     private function __construct()
     {
@@ -80,6 +88,32 @@ class Application
     }
 
     /**
+     * Set the PSR-3 logger. It is registered as a singleton in the container.
+     * If not set, a NullLogger is used.
+     */
+    public function withLogger(LoggerInterface $logger): self
+    {
+        $this->assertNotCreated();
+        $this->logger = $logger;
+
+        return $this;
+    }
+
+    /**
+     * Configure exception handlers. The callback receives the ExceptionHandler instance.
+     * Handlers are registered in the callback.
+     *
+     * @param  callable(ExceptionHandler): void  $callback
+     */
+    public function withExceptions(callable $callback): self
+    {
+        $this->assertNotCreated();
+        $this->exceptionCallback = $callback;
+
+        return $this;
+    }
+
+    /**
      * Builds the container, registers the provider, and boots the application.
      * Idempotent: a second call returns the same instance.
      */
@@ -96,6 +130,19 @@ class Application
         // App, Container-Config und Environment im Container verfügbar machen.
         $container->instance(self::class, $this);
         $container->instance(ConfigResolverInterface::class, $this->config);
+
+        // Logger und ExceptionHandler als allererstes bootstrappen
+        $logger = $this->logger ?? new NullLogger;
+        $container->instance(LoggerInterface::class, $logger);
+        $container->singleton(ExceptionHandler::class, fn (): ExceptionHandler => new ExceptionHandler($logger));
+
+        // Exception-Handler konfigurieren und global registrieren
+        $exceptionHandler = $container->get(ExceptionHandler::class);
+        if ($this->exceptionCallback !== null) {
+            ($this->exceptionCallback)($exceptionHandler);
+        }
+
+        $exceptionHandler->registerAsGlobal();
 
         foreach ($this->providers as $provider) {
             $container->addProvider($this->resolveProvider($provider));
