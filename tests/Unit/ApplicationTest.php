@@ -67,14 +67,16 @@ test('withProviders registers a provider instance', function (): void {
 });
 
 test('withProviders can be called multiple times', function (): void {
-    $provider1 = new class implements ServiceProviderInterface {
+    $provider1 = new class implements ServiceProviderInterface
+    {
         public function register(Container $c): void
         {
             $c->instance('p1', 'value1');
         }
     };
 
-    $provider2 = new class implements ServiceProviderInterface {
+    $provider2 = new class implements ServiceProviderInterface
+    {
         public function register(Container $c): void
         {
             $c->instance('p2', 'value2');
@@ -111,7 +113,7 @@ test('create is idempotent', function (): void {
 test('container throws if not created yet', function (): void {
     $app = Application::configure();
 
-    expect(fn () => $app->container())
+    expect(fn (): Container => $app->container())
         ->toThrow(LogicException::class, 'Application has not been created yet');
 });
 
@@ -157,7 +159,7 @@ test('withConfig is locked after create', function (): void {
     $app = Application::configure()
         ->create();
 
-    expect(fn () => $app->withConfig(['key' => 'value']))
+    expect(fn (): Application => $app->withConfig(['key' => 'value']))
         ->toThrow(LogicException::class, 'Application is already created');
 });
 
@@ -165,7 +167,7 @@ test('withEnvironment is locked after create', function (): void {
     $app = Application::configure()
         ->create();
 
-    expect(fn () => $app->withEnvironment('testing'))
+    expect(fn (): Application => $app->withEnvironment('testing'))
         ->toThrow(LogicException::class, 'Application is already created');
 });
 
@@ -173,7 +175,7 @@ test('withProviders is locked after create', function (): void {
     $app = Application::configure()
         ->create();
 
-    expect(fn () => $app->withProviders([RegisteringProvider::class]))
+    expect(fn (): Application => $app->withProviders([RegisteringProvider::class]))
         ->toThrow(LogicException::class, 'Application is already created');
 });
 
@@ -244,10 +246,10 @@ test('resolveProvider throws when class does not implement ServiceProviderInterf
 })->throws(ContainerException::class, 'must implement');
 
 test('provider boot method is called', function (): void {
-    $bootLog = [];
-
-    $provider = new class($bootLog) implements BootableServiceProviderInterface, ServiceProviderInterface {
-        public function __construct(private array &$log) {}
+    $provider = new class implements BootableServiceProviderInterface, ServiceProviderInterface
+    {
+        /** @var list<string> */
+        public array $log = [];
 
         public function register(Container $c): void
         {
@@ -264,7 +266,7 @@ test('provider boot method is called', function (): void {
         ->withProviders([$provider])
         ->create();
 
-    expect($bootLog)->toBe(['register', 'boot']);
+    expect($provider->log)->toBe(['register', 'boot']);
 });
 
 // =====================================================================
