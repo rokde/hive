@@ -12,6 +12,12 @@ $app = Application::configure()
         DatabaseProvider::class,   // class-string (instantiated without parameters)
         new CacheProvider(),       // or ready instance
     ])
+    ->withLogger(new MonologLogger())  // optional; Default: NullLogger
+    ->withExceptions(function (ExceptionHandler $exceptions) {
+        $exceptions->register(UserNotFoundException::class, new NotFoundHandler());
+        $exceptions->register(ValidationException::class, new ValidationHandler());
+        $exceptions->register(\Throwable::class, new FallbackHandler());
+    })
     ->withEnvironment('production') // optional; defaults to APP_ENV or 'production'
     ->create();                     // builds container, registers providers, boots
 
@@ -23,14 +29,18 @@ $app->isProduction();             // true
 $app->isEnvironment('local', 'testing');
 ```
 
-After `create()`, the container automatically has: `Application::class`,
-`ConfigResolverInterface::class` and (from the container itself) `Container::class`
-and `Psr\Container\ContainerInterface`.
+After `create()`, the following are automatically available in the container:
+- `Application::class`, `ConfigResolverInterface::class` (bootstrap context)
+- `LoggerInterface::class` (the provided logger or `NullLogger` as default)
+- `ExceptionHandler::class` (singleton, uses the logger)
+- `Container::class` and `Psr\Container\ContainerInterface` (from the container itself)
 
 Rules:
 - After `create()`, configuration is locked (`withConfig`/`withProviders`/
-  `withEnvironment` throw `LogicException`).
+  `withEnvironment`/`withLogger` throw `LogicException`).
 - `container()` before `create()` throws `LogicException`.
 - `create()` is idempotent.
+- `withLogger()` is optional — if not called, `NullLogger` (PSR-3 no-op) is used.
+- Logger and ExceptionHandler are registered before providers (available early).
 - Provider class names are instantiated without parameters (`new $class()`) — providers
   should therefore have no constructor dependencies (they run before booting).
