@@ -280,3 +280,32 @@ test('config returns the configuration resolver', function (): void {
 
     expect($app->config())->toBe($config);
 });
+
+// =====================================================================
+// Timing
+// =====================================================================
+
+test('startedAt throws before create', function (): void {
+    $app = Application::configure();
+
+    $app->startedAt();
+})->throws(LogicException::class, 'Application has not been created yet');
+
+test('startedAt returns the start timestamp after create', function (): void {
+    $before = microtime(true);
+    $app = Application::configure()->create();
+    $after = microtime(true);
+
+    expect($app->startedAt())->toBeFloat()
+        ->and($app->startedAt())->toBeGreaterThanOrEqual($before)
+        ->and($app->startedAt())->toBeLessThanOrEqual($after);
+});
+
+test('startedAt is stable across idempotent create calls', function (): void {
+    $app = Application::configure()->create();
+    $first = $app->startedAt();
+
+    $app->create();
+
+    expect($app->startedAt())->toBe($first);
+});

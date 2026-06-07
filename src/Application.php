@@ -24,6 +24,8 @@ class Application
 
     private ?Container $container = null;
 
+    private ?float $startedAt = null;
+
     private function __construct()
     {
         $this->config = new ArrayConfigResolver;
@@ -87,6 +89,8 @@ class Application
             return $this;
         }
 
+        $this->startedAt = microtime(true);
+
         $container = new Container($this->config);
 
         // App, Container-Config und Environment im Container verfügbar machen.
@@ -148,6 +152,23 @@ class Application
     public function isLocal(): bool
     {
         return $this->environment === 'local';
+    }
+
+    // ---------------------------------------------------------------------
+    // Timing
+    // ---------------------------------------------------------------------
+
+    /**
+     * Unix timestamp (including microseconds) of the application's start time.
+     * Set in create().
+     */
+    public function startedAt(): float
+    {
+        if ($this->startedAt === null) {
+            throw new LogicException('Application has not been created yet. Call create() first.');
+        }
+
+        return $this->startedAt;
     }
 
     // ---------------------------------------------------------------------
