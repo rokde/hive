@@ -254,14 +254,17 @@ test('detects a circular dependency', function (): void {
 })->throws(CircularDependencyException::class, 'Circular dependency detected');
 
 test('circular dependency message contains the full path', function (): void {
+    $message = null;
+
     try {
         (new Container)->get(CycleA::class);
-        $this->fail('expected exception');
     } catch (CircularDependencyException $circularDependencyException) {
-        expect($circularDependencyException->getMessage())
-            ->toContain(CycleA::class)
-            ->toContain(CycleB::class);
+        $message = $circularDependencyException->getMessage();
     }
+
+    expect($message)
+        ->toContain(CycleA::class)
+        ->toContain(CycleB::class);
 });
 
 // ---------------------------------------------------------------------
