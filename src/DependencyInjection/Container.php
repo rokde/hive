@@ -452,7 +452,7 @@ class Container implements ContainerInterface
 
         if (is_string($callback)) {
             if (str_contains($callback, '::')) {
-                $reflection = new ReflectionMethod($callback);
+                $reflection = ReflectionMethod::createFromMethodName($callback);
                 $object = null;
                 if (!$reflection->isStatic()) {
                     [$class] = explode('::', $callback, 2);
