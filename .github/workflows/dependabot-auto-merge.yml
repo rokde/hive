@@ -1,0 +1,4 @@
+name: dependabot-auto-merge.yml
+on:
+
+jobs:
