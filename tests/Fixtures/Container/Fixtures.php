@@ -125,7 +125,7 @@ final class Invokable
 {
     public function __invoke(Greeter $greeter, string $suffix = '!'): string
     {
-        return $greeter->greet() . $suffix;
+        return $greeter->greet().$suffix;
     }
 }
 
@@ -135,7 +135,7 @@ final class WithMethods
 
     public function instanceMethod(Greeter $greeter, string $name): string
     {
-        return $greeter->greet() . ' ' . $name;
+        return $greeter->greet().' '.$name;
     }
 
     public static function staticMethod(int $value = 1): int
@@ -145,7 +145,7 @@ final class WithMethods
 
     public function variadicMethod(string $first, int ...$rest): string
     {
-        return $first . ':' . count($rest);
+        return $first.':'.count($rest);
     }
 }
 
@@ -160,7 +160,7 @@ final class RegisteringProvider implements ServiceProviderInterface
     }
 }
 
-final class TrackingBootableProvider implements ServiceProviderInterface, BootableServiceProviderInterface
+final class TrackingBootableProvider implements BootableServiceProviderInterface, ServiceProviderInterface
 {
     /** @var list<string> */
     public static array $log = [];

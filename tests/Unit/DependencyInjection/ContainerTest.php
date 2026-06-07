@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Hive\Config\Resolver\ArrayConfigResolver;
-use Hive\Config\Resolver\ConfigResolverInterface;
 use Hive\DependencyInjection\Container;
 use Hive\DependencyInjection\Exceptions\CircularDependencyException;
 use Hive\DependencyInjection\Exceptions\ContainerException;
@@ -19,6 +18,7 @@ use Tests\Fixtures\Container\ConfigWithAttributeDefault;
 use Tests\Fixtures\Container\ConfigWithNullAttributeDefault;
 use Tests\Fixtures\Container\ConfigWithParamDefault;
 use Tests\Fixtures\Container\CycleA;
+use Tests\Fixtures\Container\CycleB;
 use Tests\Fixtures\Container\Greeter;
 use Tests\Fixtures\Container\GreeterInterface;
 use Tests\Fixtures\Container\InjectById;
@@ -34,7 +34,7 @@ use Tests\Fixtures\Container\TrackingBootableProvider;
 use Tests\Fixtures\Container\UnresolvablePrimitive;
 use Tests\Fixtures\Container\WithMethods;
 
-require_once __DIR__ . '/../../Fixtures/Container/Fixtures.php';
+require_once __DIR__.'/../../Fixtures/Container/Fixtures.php';
 
 // ---------------------------------------------------------------------
 // Self resolution / construction
@@ -54,7 +54,7 @@ test('uses a default ArrayConfigResolver when none is given', function (): void 
 test('exposes the injected config resolver', function (): void {
     $config = new ArrayConfigResolver(['app' => 'hive']);
 
-    expect((new Container($config))->config())->toBe($config);
+    expect(new Container($config)->config())->toBe($config);
 });
 
 // ---------------------------------------------------------------------
@@ -142,6 +142,7 @@ test('define registers a raw service definition', function (): void {
 test('redefining an id discards the cached singleton', function (): void {
     $container = new Container;
     $container->singleton('g', Greeter::class);
+
     $first = $container->get('g');
 
     $container->singleton('g', Greeter::class);
@@ -256,8 +257,8 @@ test('circular dependency message contains the full path', function (): void {
     try {
         (new Container)->get(CycleA::class);
         $this->fail('expected exception');
-    } catch (CircularDependencyException $e) {
-        expect($e->getMessage())
+    } catch (CircularDependencyException $circularDependencyException) {
+        expect($circularDependencyException->getMessage())
             ->toContain(CycleA::class)
             ->toContain(CycleB::class);
     }
@@ -363,7 +364,7 @@ test('call invokes a closure with injected dependencies', function (): void {
 
 test('call applies named parameter overrides', function (): void {
     $result = (new Container)->call(
-        fn (Greeter $g, string $name): string => $g->greet() . ' ' . $name,
+        fn (Greeter $g, string $name): string => $g->greet().' '.$name,
         ['name' => 'world'],
     );
 
@@ -383,11 +384,11 @@ test('call resolves the object for [class-string, method] instance method', func
 });
 
 test('call invokes a static method via "Class::method" string', function (): void {
-    expect((new Container)->call(WithMethods::class . '::staticMethod', ['value' => 5]))->toBe(50);
+    expect((new Container)->call(WithMethods::class.'::staticMethod', ['value' => 5]))->toBe(50);
 });
 
 test('call invokes a static method via [class-string, staticMethod]', function (): void {
-    expect((new Container)->call([WithMethods::class, 'staticMethod']))->toBe(10);
+    expect((new Container)->call(WithMethods::staticMethod(...)))->toBe(10);
 });
 
 test('call invokes an invokable object', function (): void {
