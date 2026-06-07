@@ -7,6 +7,7 @@ Gerade so die Basis soll es bereitstellen und Anknüpfungspunkte bieten, mit den
 
 - Application
   - Service Registry
+  - Exception Handler
 - Log
 - Event
 - ENV
