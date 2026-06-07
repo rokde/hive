@@ -3,6 +3,25 @@
     "description": "A tiny framework in php",
     "type": "library",
     "license": "MIT",
+    "scripts": {
+        "lint": [
+            "rector",
+            "pint --parallel"
+        ],
+        "test:lint": [
+            "pint --parallel --test",
+            "rector --dry-run"
+        ],
+        "test:unit": "pest --parallel",
+        "test:types": "phpstan",
+        "test:type-coverage": "pest --type-coverage --min=90",
+        "test": [
+            "@test:type-coverage",
+            "@test:unit",
+            "@test:lint",
+            "@test:types"
+        ]
+    },
     "autoload": {
         "psr-4": {
             "Hive\\": "src/"
@@ -10,7 +29,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Hive\\Tests\\": "tests/"
+            "Tests\\": "tests/"
         }
     },
     "authors": [
@@ -33,7 +52,10 @@
         "psr/container": "^2.0"
     },
     "require-dev": {
+        "laravel/pint": "^1.29",
         "pestphp/pest": "^4.7",
-        "phpstan/phpstan": "^2.2"
+        "pestphp/pest-plugin-type-coverage": "^4.0",
+        "phpstan/phpstan": "^2.2",
+        "rector/rector": "^2.4"
     }
 }
