@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Hive\DependencyInjection\Resolver\ArrayConfigResolver;
-use Hive\DependencyInjection\Resolver\ConfigResolverInterface;
+use Hive\Config\Resolver\ArrayConfigResolver;
+use Hive\Config\Resolver\ConfigResolverInterface;
 
 test('implements the config resolver interface', function (): void {
     expect(new ArrayConfigResolver)->toBeInstanceOf(ConfigResolverInterface::class);

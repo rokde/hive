@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Hive\DependencyInjection\Resolver;
+namespace Hive\Config\Resolver;
 
 final class ArrayConfigResolver implements ConfigResolverInterface
 {
