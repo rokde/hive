@@ -54,7 +54,7 @@ class Container implements ContainerInterface
     public function __construct(
         private readonly ConfigResolverInterface $config = new ArrayConfigResolver,
     ) {
-        // Den Container selbst auflösbar machen.
+        // Make the container itself resolvable.
         $this->shared[ContainerInterface::class] = $this;
         $this->shared[self::class] = $this;
     }
@@ -326,7 +326,7 @@ class Container implements ContainerInterface
             return $this->get($injectAttrs[0]->newInstance()->id);
         }
 
-        // 2. #[Config('key')] – Konfigurationswert
+        // 2. #[Config('key')] – Configuration value
         $configAttrs = $parameter->getAttributes(Config::class);
         if ($configAttrs !== []) {
             return $this->resolveConfig($parameter, $configAttrs[0]);
