@@ -9,6 +9,7 @@ use Hive\Config\Resolver\ConfigResolverInterface;
 use Hive\DependencyInjection\Container;
 use Hive\DependencyInjection\Exceptions\ContainerException;
 use Hive\DependencyInjection\Provider\ServiceProviderInterface;
+use Hive\Events\Dispatcher;
 use Hive\Exception\ExceptionHandler;
 use LogicException;
 use Psr\Log\LoggerInterface;
@@ -33,6 +34,9 @@ class Application
 
     /** @var callable|null */
     private mixed $exceptionCallback = null;
+
+    /** @var callable|null */
+    private mixed $eventCallback = null;
 
     private function __construct()
     {
@@ -114,6 +118,21 @@ class Application
     }
 
     /**
+     * Configure the event dispatcher.
+     * The callback receives the Dispatcher and can register listeners.
+     * Service providers can use events after this callback is called.
+     *
+     * @param  callable(Dispatcher): void  $callback
+     */
+    public function withEvents(callable $callback): self
+    {
+        $this->assertNotCreated();
+        $this->eventCallback = $callback;
+
+        return $this;
+    }
+
+    /**
      * Builds the container, registers the provider, and boots the application.
      * Idempotent: a second call returns the same instance.
      */
@@ -127,22 +146,31 @@ class Application
 
         $container = new Container($this->config);
 
-        // App, Container-Config und Environment im Container verfügbar machen.
+        // Make app, container config, and environment available in the container.
         $container->instance(self::class, $this);
         $container->instance(ConfigResolverInterface::class, $this->config);
 
-        // Logger und ExceptionHandler als allererstes bootstrappen
+        // Bootstrap logger and exception handler first
         $logger = $this->logger ?? new NullLogger;
         $container->instance(LoggerInterface::class, $logger);
         $container->singleton(ExceptionHandler::class, fn (): ExceptionHandler => new ExceptionHandler($logger));
 
-        // Exception-Handler konfigurieren und global registrieren
+        // Configure exception handler and register it globally
         $exceptionHandler = $container->get(ExceptionHandler::class);
         if ($this->exceptionCallback !== null) {
             ($this->exceptionCallback)($exceptionHandler);
         }
 
         $exceptionHandler->registerAsGlobal();
+
+        $container->singleton(Executor::class);
+        $container->singleton(SyncQueue::class);
+        $container->singleton(Dispatcher::class, fn ($c): Dispatcher => new Dispatcher($c->get(SyncQueue::class)));
+
+        if ($this->eventCallback !== null) {
+            $eventDispatcher = $container->get(Dispatcher::class);
+            ($this->eventCallback)($eventDispatcher);
+        }
 
         foreach ($this->providers as $provider) {
             $container->addProvider($this->resolveProvider($provider));
